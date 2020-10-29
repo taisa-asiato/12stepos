@@ -1,8 +1,55 @@
 #include "defines.h"
+#include "tsos.h"
 #include "intr.h"
 #include "interrupt.h"
 #include "serial.h"
 #include "lib.h"
+
+// TCBの個数
+#define THREAD_NUM 6
+// スレッド名の最大長
+#define THREAD_NAME_SIZE 15
+
+// スレッドコンテキスト
+typedef struct _ts_context {
+	// スタックポインタ
+	uint32	sp;
+} ts_context;
+
+
+// タスクコントロールブロック
+typedef struct _ts_thread {
+	struct _ts_thread * next; //レディーキューへの接続に利用するnextポインタ
+	char name[THREAD_NAME_SIZE + 1]; // スレッド名
+	char * stack; // スレッドのスタック
+
+	struct { // スレッドのスタートアップに渡すパラメータ
+		ts_func_t func; // スレッドのメイン関数
+		int argc; // メイン関数の引数
+		char ** argv; // メイン関数の引数
+	} init;
+
+	struct { // システムコール用バッファ
+		// システムコールの発行時に利用するパラメタ領域
+		ts_syscall_type_t type; 
+		ts_syscall_param_t *param;
+	} syscall;
+
+	ts_context context; // コンテキスト情報
+} ts_thread;
+
+// スレッドのレディーキュー
+static struct {
+	ts_thread * head;
+	ts_thread * tail;
+} readyque;
+
+static ts_thread * current; // カレントスレッド
+static ts_thread threads[THREAD_NUM]; // TCB
+static ts_handler_t handlers[SOFTVEC_TYPE_NUM]; // 割込みハンドラ
+
+// スレッドのディスパッチ用関数
+void dispatch(ts_context * context);
 
 static void intr(softvec_type_t type, unsigned long sp) {
 	int c;
