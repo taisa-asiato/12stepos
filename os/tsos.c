@@ -83,8 +83,89 @@ static int putcurrent(void) {
 	return 0;
 }
 
+/* スレッドの終了 */
+static void thread_end(void){
+	ts_exit();
+}
 
+/* スレッドのスタートアップ */
+static void thread_init(ts_thread * thp) {
+	/* スレッドのメイン関数を呼び出す */
+	thp->init.func(thp->init.argc, thp->init.argv);
+	thread_end();
+}
 
+/* システムコールの処理 */
+static ts_thread_id_t thread_run(ts_func_t func, char * name, int stacksize, int argc, char * argv[]) {
+	int i;
+	ts_thread * thp;
+	uint32 * sp;
+	extern char userstack; // リンカスクリプトで定義されるスタック領域
+	static char * thread_stack = &userstack; // ユーザスタックに利用される領域
+
+	/* 空いているタスクコントロールブロックを検索 */
+	for (i = 0; i < THREAD_NUM; i++) {
+		thp = &threads[i];
+		if (!thp->init.func) {
+			// 空いているブロックが見つかった場合
+			break;
+		}
+	}
+	if (i == THREAD_NUM) {
+		return -1;
+	}
+
+	memset(thp, 0, sizeof(*thp)); // TCBをゼロクリアする
+	strcpy(thp->name, name);
+	thp->next	= NULL;
+
+	thp->init.func = func;
+	thp->init.argc = argc;
+	thp->init.argv = argv;
+
+	// スタック領域を獲得
+	memset(thread_stack, 0, stacksize);
+	thread_stack += stacksize;
+
+	thp->stack = thread_stack; // スタックを設定
+
+	/* スタックの初期化 */
+	sp = (uint32 *)thp->stack;
+	*(--sp) = (uint32)thread_end;
+
+	/* プログラムカウンタを設定する */
+	*(--sp) = (uint32)thread_init;
+
+	*(--sp) = 0; //ER6
+	*(--sp) = 0; //ER5
+	*(--sp) = 0; //ER4
+	*(--sp) = 0; //ER3
+	*(--sp) = 0; //ER2
+	*(--sp) = 0; //ER1
+
+	/* スレッドのスタートアップ */
+	*(--sp) = (uint32)thp; // ER0, 引数
+
+	/* スレッドのコンテキストを設定 */
+	thp->context.sp = (uint32)sp;
+
+	// システムコールを呼び出したスレッドをレディーキューに戻す
+	putcurrent();
+
+	// 新規作成したスレッドをレディーキューに接続する
+	current = thp;
+	putcurrent();
+
+	return (ts_thread_id_t)current; // 新規作成したスレッドidを返す
+}
+
+/* システムコールの処理 */
+static int thread_ext(void) {
+	puts(current->name);
+	puts(" EXIT\n");
+	memset(current, 0, sizeof(*current));
+	return 0;
+}
 
 static void intr(softvec_type_t type, unsigned long sp) {
 	int c;
