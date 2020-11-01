@@ -6,6 +6,11 @@
 typedef enum {
 	TS_SYSCALL_TYPE_RUN = 0,
 	TS_SYSCALL_TYPE_EXIT,
+	TS_SYSCALL_TYPE_WAIT,
+	TS_SYSCALL_TYPE_SLEEP,
+	TS_SYSCALL_TYPE_WAKEUP,
+	TS_SYSCALL_TYPE_GETID,
+	TS_SYSCALL_TYPE_CHPRI,
 } ts_syscall_type_t;
 
 /* システムコール呼び出し時のパラメータ格納域の定義 */
@@ -14,6 +19,7 @@ typedef struct {
 		struct {
 			ts_func_t func; // メイン関数
 			char * name; // スレッド名
+			int priority; // 
 			int stacksize; // スタックのサイズ
 			int argc; // メイン関数に渡す引数の個数
 			char ** argv; // メイン関数に渡す引数
@@ -23,6 +29,28 @@ typedef struct {
 		struct {
 			int dummy; // ts_exit用のパラメータ
 		} exit;
+
+		struct {
+			int ret; //
+		} wait;
+
+		struct {
+			int ret;
+		} sleep;
+
+		struct {
+			ts_thread_id_t id;
+			int ret;
+		} wakeup;
+
+		struct {
+			ts_thread_id_t ret;
+		} getid;
+
+		struct {
+			int priority;
+			int ret;
+		} chpri;
 	} un;
 } ts_syscall_param_t;
 
