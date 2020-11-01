@@ -9,6 +9,8 @@
 #define THREAD_NUM 6
 // スレッド名の最大長
 #define THREAD_NAME_SIZE 15
+// 優先度の個数
+#define PRIORITY_NUM 16
 
 // スレッドコンテキスト
 typedef struct _ts_context {
@@ -21,7 +23,10 @@ typedef struct _ts_context {
 typedef struct _ts_thread {
 	struct _ts_thread * next; //レディーキューへの接続に利用するnextポインタ
 	char name[THREAD_NAME_SIZE + 1]; // スレッド名
+	int priority; // 優先度
 	char * stack; // スレッドのスタック
+	uint32 flags; // 各種フラグ
+	#define TS_THREAD_FLAG_READY (1<<0)
 
 	struct { // スレッドのスタートアップに渡すパラメータ
 		ts_func_t func; // スレッドのメイン関数
@@ -42,7 +47,7 @@ typedef struct _ts_thread {
 static struct {
 	ts_thread * head;
 	ts_thread * tail;
-} readyque;
+} readyque[PRIORITY_NUM];
 
 static ts_thread * current; // カレントスレッド
 static ts_thread threads[THREAD_NUM]; // TCB
@@ -56,13 +61,16 @@ static int getcurrent(void) {
 	if (current == NULL) {
 		return -1;
 	}
-
-	/* カレントスレッドはレディーキューの先頭にある */
-	readyque.head = current->next; // カレントスレッドの次のノードを渡している?
-	if (readyque.head == NULL) {
-		readyque.tail = NULL;
+	if (!(current->flags & TS_THREAD_FLAG_READY)) {
+		return 1;
 	}
 
+	/* カレントスレッドはレディーキューの先頭にある */
+	readyque[current->priority].head = current->next; // カレントスレッドの次のノードを渡している?
+	if (readyque[current->priority].head == NULL) {
+		readyque[current->priority].tail = NULL;
+	}
+	current->flags &= ~TS_THREAD_FLAG_READY;
 	current->next = NULL;
 	return 0;
 }
@@ -72,20 +80,64 @@ static int putcurrent(void) {
 	if (current == NULL) {
 		return -1;
 	}  
+	if (current->flags & TS_THREAD_FLAG_READY) {
+		return 1;
+	}
 
 	/* レディーキューの末尾に繋げる */
-	if (readyque.tail) {
-		readyque.tail->next = current;
+	if (readyque[current->priority].tail) {
+		readyque[current->priority].tail->next = current;
 	} else {
-		readyque.head = current;
+		readyque[current->priority].head = current;
 	}
-	readyque.tail = current;
+	readyque[current->priority].tail = current;
+	current->flags |= TS_THREAD_FLAG_READY;
 	return 0;
 }
 
 /* スレッドの終了 */
 static void thread_end(void){
 	ts_exit();
+}
+
+/* システムコールの処理:スレッドの実行権放棄 */
+static int thread_wait(void) {
+	putcurrent();
+	return 0;
+}
+
+/* システムコールの処理:スレッドのスリープ */
+static int thread_sleep(void) {
+	return 0;
+}
+
+/* システムコールの処理:スレッドのウェイクアップ */
+static int thread_wakeup(ts_thread_id_t id) {
+	// ウェイクアップを呼び出したスレッドをレディーキューに戻す
+	putcurrent();
+
+	// 指定されたスレッドをレディーキューに戻す
+	current = (ts_thread *)id;
+	putcurrent();
+
+	return 0;
+} 
+
+/* システムコールの処理:スレッドID取得 */
+static ts_thread_id_t thread_getid(void) {
+	putcurrent();
+	return (ts_thread_id_t)current;
+}
+
+/* システムコールの処理:ts_chpri */
+static int thread_chpri(int priority) {
+	int old = current->priority;
+
+	if (priority >= 0) {
+		current->priority = priority; // 優先度変更
+	}
+	putcurrent();
+	return old;
 }
 
 /* スレッドのスタートアップ */
@@ -96,7 +148,7 @@ static void thread_init(ts_thread * thp) {
 }
 
 /* システムコールの処理 */
-static ts_thread_id_t thread_run(ts_func_t func, char * name, int stacksize, int argc, char * argv[]) {
+static ts_thread_id_t thread_run(ts_func_t func, char * name, int priority, int stacksize, int argc, char * argv[]) {
 	int i;
 	ts_thread * thp;
 	uint32 * sp;
@@ -118,6 +170,8 @@ static ts_thread_id_t thread_run(ts_func_t func, char * name, int stacksize, int
 	memset(thp, 0, sizeof(*thp)); // TCBをゼロクリアする
 	strcpy(thp->name, name);
 	thp->next	= NULL;
+	thp->priority	= priority;
+	thp->flags 	= 0;
 
 	thp->init.func = func;
 	thp->init.argc = argc;
@@ -134,7 +188,7 @@ static ts_thread_id_t thread_run(ts_func_t func, char * name, int stacksize, int
 	*(--sp) = (uint32)thread_end;
 
 	/* プログラムカウンタを設定する */
-	*(--sp) = (uint32)thread_init;
+	*(--sp) = (uint32)thread_init | ((uint32)(priority ? 0 : 0xc0 ) << 24);
 
 	*(--sp) = 0; //ER6
 	*(--sp) = 0; //ER5
@@ -185,12 +239,27 @@ static void call_functions(ts_syscall_type_t type, ts_syscall_param_t * p) {
 	switch (type) {
 		case TS_SYSCALL_TYPE_RUN: // ts_run
 			p->un.run.ret = thread_run(	p->un.run.func, p->un.run.name,
-							p->un.run.stacksize,
+							p->un.run.priority, p->un.run.stacksize,
 							p->un.run.argc, p->un.run.argv);
 			break;
 
 		case TS_SYSCALL_TYPE_EXIT: // ts_exit
 			thread_exit();
+			break;
+		case TS_SYSCALL_TYPE_WAIT: // ts_wait()
+			p->un.wait.ret = thread_wait();
+			break;
+		case TS_SYSCALL_TYPE_SLEEP: // ts_sleep()
+			p->un.sleep.ret = thread_sleep();
+			break;
+		case TS_SYSCALL_TYPE_WAKEUP: // ts_wakeup();
+			p->un.wakup.ret = thread_wakeup(p->un.wakeup.id);
+			break;
+		case TS_SYSCALL_TYPE_GETID: // ts_getid()
+			p->un.getid.ret = thread_getid();
+			break;
+		case TS_SYSCALL_TYPE_CHPRI: // ts_chpri()
+			p->un.chpri.ret = thread_chpri(p->un.chpri.priority);
 			break;
 		default:
 			break;
@@ -205,10 +274,20 @@ static void syscall_proc(ts_syscall_type_t type, ts_syscall_param_t * p) {
 
 /* スレッドのスケジューリング */
 static void schedule(void) {
-	if (!readyque.head) {
+	int i;
+
+	/*
+	 * 優先順位の高いスレッドから見ていく
+	 * */
+	for (i = 0 ; i < PRIORITY_NUM; i++) {
+		if (readyque[i].head) {
+			break;
+		}
+	}
+	if (i == PRIORITY_NUM) {
 		ts_sysdown();
 	}
-	current = readyque.head; // カレントスレッドに設定する
+	current = readyque[i].head; // カレントスレッドに設定する
 }
 
 static void syscall_intr(void) {
@@ -247,11 +326,11 @@ static void thread_intr(softvec_type_t type, unsigned long sp) {
 }
 
 /* 初期スレッドを起動し, OSの動作を開始する */
-void ts_start(ts_func_t func, char * name, int stacksize, int argc, char * argv[]) {
+void ts_start(ts_func_t func, char * name, int priority, int stacksize, int argc, char * argv[]) {
 	current = NULL;
 
 	// 各種データの初期化
-	readyque.head = readyque.tail = NULL;
+	memset(readyque, 0, sizeof(readyque));
 	memset(threads, 0, sizeof(threads));
 	memset(handlers, 0, sizeof(handlers));
 
@@ -260,7 +339,7 @@ void ts_start(ts_func_t func, char * name, int stacksize, int argc, char * argv[
 	setintr(SOFTVEC_TYPE_SOFTERR, softerr_intr); // エラー発生時処理
 
 	// 初期スレッドはシステムコールの発行が不可能なので直接関数を呼び出す
-	current = (ts_thread *)thread_run(func, name, stacksize, argc, argv);
+	current = (ts_thread *)thread_run(func, name, priority, stacksize, argc, argv);
 
 	// 最初のスレッド起動
 	dispatch(&current->context);
