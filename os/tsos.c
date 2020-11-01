@@ -160,57 +160,125 @@ static ts_thread_id_t thread_run(ts_func_t func, char * name, int stacksize, int
 }
 
 /* システムコールの処理 */
-static int thread_ext(void) {
+static int thread_exit(void) {
 	puts(current->name);
 	puts(" EXIT\n");
 	memset(current, 0, sizeof(*current));
 	return 0;
 }
 
-static void intr(softvec_type_t type, unsigned long sp) {
-	int c;
-	// 受信バッファの定義
-	static char buf[32];
-	static int len;
+/* 割込みハンドラの登録 */
+static int setintr(softvec_type_t type, ts_handler_t handler) {
+	static void thread_intr(softvec_type_t type, unsigned long sp);
 
-	// 受信割込みが入ったのでコンソールから１文字受信する
-	c = getc();
+	/* 割込みを受け付けるために，ソフトウェア・割込みベクタに
+	 * OSの割込み処理の入り口となる関数を登録する*
+	 */
 
-	if (c != '\n') {
-		// 受信したバイト列が改行でない場合はバッファに文字を保存する
-		buf[len++] = c;
-	} else {
-		buf[len++] = '\0';
-		if (!strncmp(buf, "echo", 4)) {
-			// 受信バイト列がechoの場合 
-			puts(buf + 4);
-			puts("\n");
-		} else {
-			puts("Unknow Command. Please check your input.\n");
-		}
-		puts("> ");
-		len = 0;
-	}
-}
-
-int main(void) {
-	INTR_DISABLE; // 割込みを無効化する
-
-	puts("tsos boot suceed!\n");
-
-	// ソフトウェア・割込みベクタにシリアル割込みハンドラを設定
-	softvec_setintr(SOFTVEC_TYPE_SERINTR, intr);
-	serial_intr_recv_enable(SERIAL_DEFAULT_DEVICE);
-
-	puts("> ");
-
-	// 割込み有効化
-	INTR_ENABLE;
-
-	while (1) {
-		// 省電力モードに以降 
-		asm volatile ("sleep");
-	}
-
+	softvec_setintr(type, thread_intr);
+	handlers[type] = handler; // OS側から呼び出すハンドラを登録
 	return 0;
 }
+
+static void call_functions(ts_syscall_type_t type, ts_syscall_param_t * p) {
+	/* システムコールの時効中にcurrentが書き換わるの注意 */
+	switch (type) {
+		case TS_SYSCALL_TYPE_RUN: // ts_run
+			p->un.run.ret = thread_run(	p->un.run.func, p->un.run.name,
+							p->un.run.stacksize,
+							p->un.run.argc, p->un.run.argv);
+			break;
+
+		case TS_SYSCALL_TYPE_EXIT: // ts_exit
+			thread_exit();
+			break;
+		default:
+			break;
+	}
+}
+
+/* システムコールの処理 */
+static void syscall_proc(ts_syscall_type_t type, ts_syscall_param_t * p) {
+	getcurrent();
+	call_functions(type, p);
+}
+
+/* スレッドのスケジューリング */
+static void schedule(void) {
+	if (!readyque.head) {
+		ts_sysdown();
+	}
+	current = readyque.head; // カレントスレッドに設定する
+}
+
+static void syscall_intr(void) {
+	syscall_proc(current->syscall.type, current->syscall.param);
+}
+
+static void softerr_intr(void) {
+	puts(current->name);
+	puts(" DOWN\n");
+	getcurrent();
+	thread_exit();
+}
+	
+static void thread_intr(softvec_type_t type, unsigned long sp) {
+	// カレントスレッドのコンテキストを保存する
+	current->context.sp = sp;
+
+	/*
+	 * 割込みごとの処理を実行する
+	 * SOFTVEC_TYPE_SYSCALL, SOFTVEC_TYPE_SOFTERRの場合は
+	 * syscall_intr(), softerr_intr()がハンドラに登録されているので
+	 * それらが実行される
+	 * */
+
+	if (handlers[type]) {
+		handlers[type]();
+	}
+
+	schedule();
+
+	/*
+	 * スレッドのディスパッチ
+	 * 関数本体はstartup.s
+	 * */
+	dispatch(&current->context);
+}
+
+/* 初期スレッドを起動し, OSの動作を開始する */
+void ts_start(ts_func_t func, char * name, int stacksize, int argc, char * argv[]) {
+	current = NULL;
+
+	// 各種データの初期化
+	readyque.head = readyque.tail = NULL;
+	memset(threads, 0, sizeof(threads));
+	memset(handlers, 0, sizeof(handlers));
+
+	// 割込みハンドラの登録
+	setintr(SOFTVEC_TYPE_SYSCALL, syscall_intr); // システムコール割込み
+	setintr(SOFTVEC_TYPE_SOFTERR, softerr_intr); // エラー発生時処理
+
+	// 初期スレッドはシステムコールの発行が不可能なので直接関数を呼び出す
+	current = (ts_thread *)thread_run(func, name, stacksize, argc, argv);
+
+	// 最初のスレッド起動
+	dispatch(&current->context);
+}
+
+/* OS内部で致命的なエラーが発生した場合 */
+void ts_sysdown(void) {
+	puts("system error\n");
+	while(1) {
+		;
+	}
+}
+
+/* システムコール呼び出し用ライブラリ関数 */
+void ts_syscall(ts_syscall_type_t type, ts_syscall_param_t * param) {
+	current->syscall.type = type; // システムコール番号の設定
+	current->syscall.param = param; // パラメータの設定
+
+	asm volatile("trapa #0"); // トラップ割込発生，トラップ命令により割込みを発生させる
+}
+

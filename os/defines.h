@@ -8,4 +8,8 @@ typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned long uint32;
 
+typedef uint32 ts_thread_id_t;
+typedef int (*ts_func_t)(int argc, char * argv[]);
+typedef void (*ts_handler_t)(void);
+
 #endif

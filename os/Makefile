@@ -16,6 +16,9 @@ STRIP	= $(BINDIR)/$(ADDNAME)strip
 OBJS	= startup.o main.o interrupt.o
 OBJS	+= lib.o serial.o
 
+# source of tsos
+OBJS	+= tsos.o syscall.o test08_1.o
+
 TARGET	= tsos
 
 CFLAGS	= -Wall -mh -nostdinc -nostdlib -fno-builtin
