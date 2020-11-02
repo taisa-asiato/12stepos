@@ -2,7 +2,7 @@
 #include "tsos.h"
 #include "intr.h"
 #include "interrupt.h"
-#include "serial.h"
+#include "syscall.h"
 #include "lib.h"
 
 // TCBの個数
@@ -253,7 +253,7 @@ static void call_functions(ts_syscall_type_t type, ts_syscall_param_t * p) {
 			p->un.sleep.ret = thread_sleep();
 			break;
 		case TS_SYSCALL_TYPE_WAKEUP: // ts_wakeup();
-			p->un.wakup.ret = thread_wakeup(p->un.wakeup.id);
+			p->un.wakeup.ret = thread_wakeup(p->un.wakeup.id);
 			break;
 		case TS_SYSCALL_TYPE_GETID: // ts_getid()
 			p->un.getid.ret = thread_getid();

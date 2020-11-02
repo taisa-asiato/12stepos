@@ -25,28 +25,22 @@ typedef struct {
 			char ** argv; // メイン関数に渡す引数
 			ts_thread_id_t ret; // ts_runの返り値
 		} run;
-
 		struct {
 			int dummy; // ts_exit用のパラメータ
 		} exit;
-
 		struct {
 			int ret; //
 		} wait;
-
 		struct {
 			int ret;
 		} sleep;
-
 		struct {
 			ts_thread_id_t id;
 			int ret;
 		} wakeup;
-
 		struct {
 			ts_thread_id_t ret;
 		} getid;
-
 		struct {
 			int priority;
 			int ret;
