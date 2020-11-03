@@ -33,6 +33,7 @@ int ts_sleep(void) {
 
 int ts_wakeup(ts_thread_id_t id) {
 	ts_syscall_param_t param;
+	param.un.wakeup.id = id;
 	ts_syscall(TS_SYSCALL_TYPE_WAKEUP, &param);
 	return param.un.wakeup.ret;
 }

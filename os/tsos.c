@@ -26,7 +26,7 @@ typedef struct _ts_thread {
 	int priority; // 優先度
 	char * stack; // スレッドのスタック
 	uint32 flags; // 各種フラグ
-	#define TS_THREAD_FLAG_READY (1<<0)
+#define TS_THREAD_FLAG_READY (1<<0)
 
 	struct { // スレッドのスタートアップに渡すパラメータ
 		ts_func_t func; // スレッドのメイン関数
@@ -347,7 +347,7 @@ void ts_start(ts_func_t func, char * name, int priority, int stacksize, int argc
 
 /* OS内部で致命的なエラーが発生した場合 */
 void ts_sysdown(void) {
-	puts("system error\n");
+	puts("system error!\n");
 	while(1) {
 		;
 	}
@@ -357,7 +357,9 @@ void ts_sysdown(void) {
 void ts_syscall(ts_syscall_type_t type, ts_syscall_param_t * param) {
 	current->syscall.type = type; // システムコール番号の設定
 	current->syscall.param = param; // パラメータの設定
+	puts(param->un.run.name);
+	puts("\n");
 
-	asm volatile("trapa #0"); // トラップ割込発生，トラップ命令により割込みを発生させる
+	asm volatile ("trapa #0"); // トラップ割込発生，トラップ命令により割込みを発生させる
 }
 
