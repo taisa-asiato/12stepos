@@ -1,24 +1,38 @@
-#ifndef _TSOS_H_INCLUEDED_
-#define _TSOS_H_INCLUEDED_
+#ifndef _TSOS_H_INCLUDED_
+#define _TSOS_H_INCLUDED_
 
 #include "defines.h"
 #include "syscall.h"
 
 /* システムコール */
 // スレッド起動用のシステムコール
-ts_thread_id_t ts_run(ts_func_t func, char * name, int stacksize, int argc, char * argv[] );
+ts_thread_id_t ts_run(ts_func_t func, char * name, int priority, int stacksize, int argc, char * argv[] );
 // スレッド終了のシステムコール
 void ts_exit(void);
+int ts_wait(void);
+int ts_sleep(void);
+int ts_wakeup(ts_thread_id_t id);
+ts_thread_id_t ts_getid(void);
+int ts_chpri(int priority);
+
 
 /* ライブラリ関数 */
 // 初期スレッドを起動しOSの動作を開始する
-void ts_start(ts_func_t func, char * name, int stacksize, int argc, char * argv[]);
+void ts_start(ts_func_t func, char * name, int priority, int stacksize, int argc, char * argv[]);
 // 致命的エラーの際に実行する
 void ts_sysdown(void);
 // システムコールを実行する
 void ts_syscall(ts_syscall_type_t type, ts_syscall_param_t * param);
 
 /* ユーザースレッドのメイン関数 */
+int test09_1_main(int argc, char * argv[]);
+int test09_2_main(int argc, char * argv[]);
+int test09_3_main(int argc, char * argv[]);
+int test09_4_main(int argc, char * argv[]);
 int test08_1_main(int argc, char * argv[]);
+extern ts_thread_id_t test09_1_id;
+extern ts_thread_id_t test09_2_id;
+extern ts_thread_id_t test09_3_id;
+extern ts_thread_id_t test09_4_id;
 
 #endif
