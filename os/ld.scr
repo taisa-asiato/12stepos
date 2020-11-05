@@ -14,7 +14,7 @@ MEMORY {
 
 SECTIONS {
 	.softvec : {
-		_softvec = . ;
+		_softvec = .;
 	} > softvec
 
 	.text : {
@@ -48,14 +48,14 @@ SECTIONS {
 	_end = . ;
 
 	.userstack : {
-		_userstack = . ;
+		_userstack = .;
 	} > userstack
 
 	.bootstack : {
-		_bootstack = . ;
+		_bootstack = .;
 	} > bootstack
 
 	.intrstack : {
-		_intrstack = . ;
+		_intrstack = .;
 	} > intrstack
 }

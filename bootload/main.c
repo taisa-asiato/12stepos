@@ -1,9 +1,9 @@
 #include "defines.h"
 #include "interrupt.h"
 #include "serial.h"
-#include "lib.h"
-#include "elf.h"
 #include "xmodem.h"
+#include "elf.h"
+#include "lib.h"
 
 static int init(void) {
 	/* 以下のシンボルはリンカスクリプトで定義済のもの */
