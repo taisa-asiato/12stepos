@@ -100,46 +100,6 @@ static void thread_end(void){
 	ts_exit();
 }
 
-/* システムコールの処理:スレッドの実行権放棄 */
-static int thread_wait(void) {
-	putcurrent();
-	return 0;
-}
-
-/* システムコールの処理:スレッドのスリープ */
-static int thread_sleep(void) {
-	return 0;
-}
-
-/* システムコールの処理:スレッドのウェイクアップ */
-static int thread_wakeup(ts_thread_id_t id) {
-	// ウェイクアップを呼び出したスレッドをレディーキューに戻す
-	putcurrent();
-
-	// 指定されたスレッドをレディーキューに戻す
-	current = (ts_thread *)id;
-	putcurrent();
-
-	return 0;
-} 
-
-/* システムコールの処理:スレッドID取得 */
-static ts_thread_id_t thread_getid(void) {
-	putcurrent();
-	return (ts_thread_id_t)current;
-}
-
-/* システムコールの処理:ts_chpri */
-static int thread_chpri(int priority) {
-	int old = current->priority;
-
-	if (priority >= 0) {
-		current->priority = priority; // 優先度変更
-	}
-	putcurrent();
-	return old;
-}
-
 /* スレッドのスタートアップ */
 static void thread_init(ts_thread * thp) {
 	/* スレッドのメイン関数を呼び出す */
@@ -219,6 +179,46 @@ static int thread_exit(void) {
 	puts(" EXIT\n");
 	memset(current, 0, sizeof(*current));
 	return 0;
+}
+
+/* システムコールの処理:スレッドの実行権放棄 */
+static int thread_wait(void) {
+	putcurrent();
+	return 0;
+}
+
+/* システムコールの処理:スレッドのスリープ */
+static int thread_sleep(void) {
+	return 0;
+}
+
+/* システムコールの処理:スレッドのウェイクアップ */
+static int thread_wakeup(ts_thread_id_t id) {
+	// ウェイクアップを呼び出したスレッドをレディーキューに戻す
+	putcurrent();
+
+	// 指定されたスレッドをレディーキューに戻す
+	current = (ts_thread *)id;
+	putcurrent();
+
+	return 0;
+} 
+
+/* システムコールの処理:スレッドID取得 */
+static ts_thread_id_t thread_getid(void) {
+	putcurrent();
+	return (ts_thread_id_t)current;
+}
+
+/* システムコールの処理:ts_chpri */
+static int thread_chpri(int priority) {
+	int old = current->priority;
+
+	if (priority >= 0) {
+		current->priority = priority; // 優先度変更
+	}
+	putcurrent();
+	return old;
 }
 
 /* 割込みハンドラの登録 */
@@ -357,8 +357,6 @@ void ts_sysdown(void) {
 void ts_syscall(ts_syscall_type_t type, ts_syscall_param_t * param) {
 	current->syscall.type = type; // システムコール番号の設定
 	current->syscall.param = param; // パラメータの設定
-	puts(param->un.run.name);
-	puts("\n");
 
 	asm volatile ("trapa #0"); // トラップ割込発生，トラップ命令により割込みを発生させる
 }
