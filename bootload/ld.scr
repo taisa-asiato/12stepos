@@ -59,10 +59,10 @@ SECTIONS {
 	_end = . ;
 
 	.bootstack : {
-		_bootstack = . ;
+		_bootstack = .;
 	} > bootstack
 
 	.intrstack : {
-		_intrstack = . ;
+		_intrstack = .;
 	} > intrstack
 }
