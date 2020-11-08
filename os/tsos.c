@@ -7,10 +7,10 @@
 
 // TCBの個数
 #define THREAD_NUM 6
-// スレッド名の最大長
-#define THREAD_NAME_SIZE 15
 // 優先度の個数
 #define PRIORITY_NUM 16
+// スレッド名の最大長
+#define THREAD_NAME_SIZE 15
 
 // スレッドコンテキスト
 typedef struct _ts_context {
