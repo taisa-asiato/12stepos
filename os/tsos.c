@@ -18,20 +18,19 @@ typedef struct _ts_context {
 	uint32	sp;
 } ts_context;
 
-
 // タスクコントロールブロック
 typedef struct _ts_thread {
-	struct _ts_thread * next; //レディーキューへの接続に利用するnextポインタ
+	struct _ts_thread *next; //レディーキューへの接続に利用するnextポインタ
 	char name[THREAD_NAME_SIZE + 1]; // スレッド名
 	int priority; // 優先度
-	char * stack; // スレッドのスタック
+	char *stack; // スレッドのスタック
 	uint32 flags; // 各種フラグ
 #define TS_THREAD_FLAG_READY (1<<0)
 
 	struct { // スレッドのスタートアップに渡すパラメータ
 		ts_func_t func; // スレッドのメイン関数
 		int argc; // メイン関数の引数
-		char ** argv; // メイン関数の引数
+		char **argv; // メイン関数の引数
 	} init;
 
 	struct { // システムコール用バッファ
@@ -45,16 +44,16 @@ typedef struct _ts_thread {
 
 // スレッドのレディーキュー
 static struct {
-	ts_thread * head;
-	ts_thread * tail;
+	ts_thread *head;
+	ts_thread *tail;
 } readyque[PRIORITY_NUM];
 
-static ts_thread * current; // カレントスレッド
+static ts_thread *current; // カレントスレッド
 static ts_thread threads[THREAD_NUM]; // TCB
 static ts_handler_t handlers[SOFTVEC_TYPE_NUM]; // 割込みハンドラ
 
 // スレッドのディスパッチ用関数
-void dispatch(ts_context * context);
+void dispatch(ts_context *context);
 
 /* カレントスレッドをレディーキューから抜き出す */
 static int getcurrent(void) {
@@ -101,19 +100,19 @@ static void thread_end(void){
 }
 
 /* スレッドのスタートアップ */
-static void thread_init(ts_thread * thp) {
+static void thread_init(ts_thread *thp) {
 	/* スレッドのメイン関数を呼び出す */
 	thp->init.func(thp->init.argc, thp->init.argv);
 	thread_end();
 }
 
 /* システムコールの処理 */
-static ts_thread_id_t thread_run(ts_func_t func, char * name, int priority, int stacksize, int argc, char * argv[]) {
+static ts_thread_id_t thread_run(ts_func_t func, char *name, int priority, int stacksize, int argc, char *argv[]) {
 	int i;
-	ts_thread * thp;
-	uint32 * sp;
+	ts_thread *thp;
+	uint32 *sp;
 	extern char userstack; // リンカスクリプトで定義されるスタック領域
-	static char * thread_stack = &userstack; // ユーザスタックに利用される領域
+	static char *thread_stack = &userstack; // ユーザスタックに利用される領域
 
 	/* 空いているタスクコントロールブロックを検索 */
 	for (i = 0; i < THREAD_NUM; i++) {
@@ -176,7 +175,7 @@ static ts_thread_id_t thread_run(ts_func_t func, char * name, int priority, int 
 /* システムコールの処理 */
 static int thread_exit(void) {
 	puts(current->name);
-	puts(" EXIT\n");
+	puts(" EXIT.\n");
 	memset(current, 0, sizeof(*current));
 	return 0;
 }
@@ -234,7 +233,7 @@ static int setintr(softvec_type_t type, ts_handler_t handler) {
 	return 0;
 }
 
-static void call_functions(ts_syscall_type_t type, ts_syscall_param_t * p) {
+static void call_functions(ts_syscall_type_t type, ts_syscall_param_t *p) {
 	/* システムコールの時効中にcurrentが書き換わるの注意 */
 	switch (type) {
 		case TS_SYSCALL_TYPE_RUN: // ts_run
@@ -267,7 +266,7 @@ static void call_functions(ts_syscall_type_t type, ts_syscall_param_t * p) {
 }
 
 /* システムコールの処理 */
-static void syscall_proc(ts_syscall_type_t type, ts_syscall_param_t * p) {
+static void syscall_proc(ts_syscall_type_t type, ts_syscall_param_t *p) {
 	getcurrent();
 	call_functions(type, p);
 }
@@ -326,7 +325,7 @@ static void thread_intr(softvec_type_t type, unsigned long sp) {
 }
 
 /* 初期スレッドを起動し, OSの動作を開始する */
-void ts_start(ts_func_t func, char * name, int priority, int stacksize, int argc, char * argv[]) {
+void ts_start(ts_func_t func, char *name, int priority, int stacksize, int argc, char *argv[]) {
 	current = NULL;
 
 	// 各種データの初期化
@@ -354,7 +353,7 @@ void ts_sysdown(void) {
 }
 
 /* システムコール呼び出し用ライブラリ関数 */
-void ts_syscall(ts_syscall_type_t type, ts_syscall_param_t * param) {
+void ts_syscall(ts_syscall_type_t type, ts_syscall_param_t *param) {
 	current->syscall.type = type; // システムコール番号の設定
 	current->syscall.param = param; // パラメータの設定
 
