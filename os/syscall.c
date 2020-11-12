@@ -3,7 +3,7 @@
 #include "syscall.h"
 
 /* システムコール */
-ts_thread_id_t ts_run(ts_func_t func, char * name, int priority, int stacksize, int argc, char * argv[]) {
+ts_thread_id_t ts_run(ts_func_t func, char *name, int priority, int stacksize, int argc, char *argv[]) {
 	ts_syscall_param_t param;
 	param.un.run.func = func;
 	param.un.run.name = name;

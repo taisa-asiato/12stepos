@@ -175,6 +175,7 @@ static ts_thread_id_t thread_run(ts_func_t func, char *name, int priority, int s
 /* システムコールの処理 */
 static int thread_exit(void) {
 	puts(current->name);
+	puts(sizeof(current->name));
 	puts(" EXIT.\n");
 	memset(current, 0, sizeof(*current));
 	return 0;
