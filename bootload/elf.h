@@ -1,5 +1,5 @@
-#ifndef _ELF_H_INCLUDE_
-#define _ELF_H_INCLUDE_
+#ifndef _ELF_H_INCLUDED_
+#define _ELF_H_INCLUDED_
 
 char * elf_load(char *buf);
 
