@@ -34,21 +34,21 @@ LFLAGS	= -static -T ld.scr -L.
 .SUFFIXES: .s .o
 .SUFFIXES: .S .o
 
-all :	$(TARGET)
+all :		$(TARGET)
+
 $(TARGET) :	$(OBJS)
 		$(CC) $(OBJS) -o $(TARGET) $(CFLAGS) $(LFLAGS)
 		cp $(TARGET) $(TARGET).elf
 		$(STRIP) $(TARGET)
 
-.c.o :	$<
+.c.o :		$<
 		$(CC) -c $(CFLAGS) $<
 
-.s.o :	$<
+.s.o :		$<
 		$(CC) -c $(CFLAGS) $<
 
-.S.o :	$<
+.S.o :		$<
 		$(CC) -c $(CFLAGS) $<
 
-clean :	
+clean :
 		rm -f $(OBJS) $(TARGET) $(TARGET).elf
-

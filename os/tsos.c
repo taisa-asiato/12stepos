@@ -155,8 +155,6 @@ static ts_thread_id_t thread_run(ts_func_t func, char *name, int priority, int s
 	*(--sp) = 0; //ER3
 	*(--sp) = 0; //ER2
 	*(--sp) = 0; //ER1
-	//*(--sp) = (uint32)argv;
-	//*(--sp) = (uint32)argc;
 
 	/* スレッドのスタートアップ */
 	*(--sp) = (uint32)thp; // ER0, 引数
