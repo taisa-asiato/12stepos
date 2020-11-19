@@ -14,6 +14,8 @@ int ts_sleep(void);
 int ts_wakeup(ts_thread_id_t id);
 ts_thread_id_t ts_getid(void);
 int ts_chpri(int priority);
+void  * ts_tmalloc(void *p);
+int ts_tmfree(void *p);
 
 
 /* ライブラリ関数 */
@@ -34,5 +36,6 @@ extern ts_thread_id_t test09_1_id;
 extern ts_thread_id_t test09_2_id;
 extern ts_thread_id_t test09_3_id;
 extern ts_thread_id_t test09_4_id;
+int test10_1_main(int argc, char * argv[]);
 
 #endif

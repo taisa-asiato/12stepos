@@ -50,3 +50,17 @@ int ts_chpri(int priority) {
 	ts_syscall(TS_SYSCALL_TYPE_CHPRI, &param);
 	return param.un.chpri.ret;
 }
+
+void * ts_tmalloc(int size) {
+	ts_syscall_param_t param;
+	param.un.tmalloc.size = size;
+	ts_syscall(TS_SYSCALL_TYPE_TMALLOC, &param);
+	return param.un.tmalloc.ret;
+}
+
+int * ts_tmfree(void * p) {
+	ts_syscall_param_t param;
+	param.un.tmfree.p = p;
+	ts_syscall(TS_SYSCALL_TYPE_TMFREE, &param);
+	return param.un.tmfree.ret;
+}

@@ -4,6 +4,7 @@
 #include "interrupt.h"
 #include "syscall.h"
 #include "lib.h"
+#include "memory.h"
 
 // TCBの個数
 #define THREAD_NUM 6
@@ -220,6 +221,19 @@ static int thread_chpri(int priority) {
 	return old;
 }
 
+/* 動的メモリ確保 */
+static void * thread_tmalloc(int size) {
+	putcurrent();
+	return tsmem_alloc(size);
+}
+
+/* メモリ解放 */
+static int thread_tmfree(char * p) {
+	tsmem_free(p);
+	putcurrent();
+	return 0;
+}
+
 /* 割込みハンドラの登録 */
 static int setintr(softvec_type_t type, ts_handler_t handler) {
 	static void thread_intr(softvec_type_t type, unsigned long sp);
@@ -259,6 +273,12 @@ static void call_functions(ts_syscall_type_t type, ts_syscall_param_t *p) {
 			break;
 		case TS_SYSCALL_TYPE_CHPRI: // ts_chpri()
 			p->un.chpri.ret = thread_chpri(p->un.chpri.priority);
+			break;
+		case TS_SYSCALL_TYPE_TMALLOC: // ts_tmalloc()
+			p->un.tmalloc.ret = thread_tmalloc(p->un.tmalloc.size);
+			break;
+		case TS_SYSCALL_TYPE_TMFREE: // ts_tmfree()
+			p->un.tmfree.ret = thread_tmfree(p->un.tmfree.p);
 			break;
 		default:
 			break;
@@ -326,6 +346,7 @@ static void thread_intr(softvec_type_t type, unsigned long sp) {
 
 /* 初期スレッドを起動し, OSの動作を開始する */
 void ts_start(ts_func_t func, char *name, int priority, int stacksize, int argc, char *argv[]) {
+	tsmem_init();
 	current = NULL;
 
 	// 各種データの初期化

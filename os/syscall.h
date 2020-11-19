@@ -11,6 +11,8 @@ typedef enum {
 	TS_SYSCALL_TYPE_WAKEUP,
 	TS_SYSCALL_TYPE_GETID,
 	TS_SYSCALL_TYPE_CHPRI,
+	TS_SYSCALL_TYPE_TMALLOC,
+	TS_SYSCALL_TYPE_TMFREE,
 } ts_syscall_type_t;
 
 /* システムコール呼び出し時のパラメータ格納域の定義 */
@@ -45,6 +47,14 @@ typedef struct {
 			int priority;
 			int ret;
 		} chpri;
+		struct {
+			int size;
+			void * ret;
+		} tmalloc;
+		struct {
+			char * p;
+			int ret;
+		} tmfree;
 	} un;
 } ts_syscall_param_t;
 
