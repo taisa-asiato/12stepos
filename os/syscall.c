@@ -58,7 +58,7 @@ void * ts_tmalloc(int size) {
 	return param.un.tmalloc.ret;
 }
 
-int * ts_tmfree(void * p) {
+int ts_tmfree(void * p) {
 	ts_syscall_param_t param;
 	param.un.tmfree.p = p;
 	ts_syscall(TS_SYSCALL_TYPE_TMFREE, &param);

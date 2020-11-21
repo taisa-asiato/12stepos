@@ -48,7 +48,7 @@ static int tsmem_init_pool(tsmem_pool * p) {
 }
 
 /* 動的メモリの初期化 */
-int tsmem_inti(void) {
+int tsmem_init(void) {
 	int i;
 	for (i = 0; i < MEMORY_AREA_NUM; i++) {
 		tsmem_init_pool(&pool[i]);	// 各メモリプールを初期化する
@@ -90,13 +90,13 @@ void tsmem_free(void *mem) {
 	tsmem_block * mp;
 	tsmem_pool * p;
 
-	mp =((tsmem_block)*mem - 1);	// 領域の直前にあるメモリブロック構造体にアクセスする 
+	mp =((tsmem_block *)mem - 1);	// 領域の直前にあるメモリブロック構造体にアクセスする 
 
 	for (i = 0; i < MEMORY_AREA_NUM; i++) {
 		p = &pool[i];
 		if (mp->size == p->size) {	// 同一サイズのメモリプールを検索する
 			mp->next = p->free;
-			p->free = p;
+			p->free = mp;
 			return;
 		}
 	}

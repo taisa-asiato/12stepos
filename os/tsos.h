@@ -14,7 +14,7 @@ int ts_sleep(void);
 int ts_wakeup(ts_thread_id_t id);
 ts_thread_id_t ts_getid(void);
 int ts_chpri(int priority);
-void  * ts_tmalloc(void *p);
+void  * ts_tmalloc(int size);
 int ts_tmfree(void *p);
 
 
