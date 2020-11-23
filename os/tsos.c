@@ -43,6 +43,24 @@ typedef struct _ts_thread {
 	ts_context context; // コンテキスト情報
 } ts_thread;
 
+// メッセージバッファ
+typedef struct _ts_msgbuf {
+	struct _ts_msgbuf * next;
+	ts_thread * sender; // メッセージを送信したスレッド
+	struct {
+		int size;
+		char * p;
+	} param;
+} ts_msgbuf;
+
+// メッセージボックス
+typedef struct _ts_msgbox {
+	ts_thread * receiver; // 受信待ち状態のスレッド
+	ts_msgbuf * head;
+	ts_msgbuf * tail;
+	long dummy[1];
+} ts_msgbox;
+
 // スレッドのレディーキュー
 static struct {
 	ts_thread *head;
@@ -52,6 +70,7 @@ static struct {
 static ts_thread *current; // カレントスレッド
 static ts_thread threads[THREAD_NUM]; // TCB
 static ts_handler_t handlers[SOFTVEC_TYPE_NUM]; // 割込みハンドラ
+static ts_msgbox msgboxes[MSGBOX_ID_NUM]; // メッセージボックス
 
 // スレッドのディスパッチ用関数
 void dispatch(ts_context *context);
@@ -234,6 +253,98 @@ static int thread_tmfree(char * p) {
 	return 0;
 }
 
+/* メッセージ送信 */
+static int thread_send(ts_msgbox_id_t id, int size, char * p) {
+	ts_msgbox * mboxp = &msgboxes[id];
+
+	putcurrent();
+	sendmsg(mboxp, current, size, p);
+
+	// 受信待ちスレッドが存在している場合には受信処理を行う
+	if (mboxp->receiver) {
+		current = mboxp->receiver; // 受信待ちスレッド
+		recvmsg(mboxp);			//メッセージの受信処理
+		putcurrent();
+	}
+	return size;
+}
+
+/* メッセージ受信 */
+static ts_thread_id_t thread_recv(ts_msgbox_id_t id, int * sizep, char **p) {
+	ts_msgbox * mboxp = &msgboxes[id];
+
+	// 他のスレッドが受信待ちしている
+	if (mxboxp->receiver) {
+		ts_sysdown();
+	}
+
+	mboxp->receiver = current; // 受信待ちスレッドに設定
+
+	// メッセージボックスにメッセージがないためスリープさせる
+	if (mboxp->head == NULL) {
+		return -1;
+	}
+
+	recvmsg(mboxp);
+	putcurrent();
+
+	return current->syscall.param->un.recv.ret;
+}
+
+// メッセージの送信処理
+static void sendmsg(ts_msgbox * mboxp, ts_thread * thp, int size, char * p) {
+	ts_msgbuf * mp;
+
+	// メッセージバッファの作成
+	mp = (ts_msgbuf *)tsmem_alloc(sizeof(*mp));
+	if (mp == NULL) {
+		ts_sysdown();
+	}
+
+	// 各種パラメータの設定
+	mp->next 	= NULL;
+	mp->sender	= thp; // 送信元スレッドのポインタ
+	mp->param.size	= size;
+	mp->param.p	= p;
+
+	if (mboxp->tail) {
+		mboxp->tail->next = mp;
+	} else {
+		mboxp->head = mp;
+	}
+	mboxp->tail = mp;
+}
+
+// メッセージの受信処理
+static void recvmsg(ts_msgbox * mboxp) {
+	ts_msgbuf * mp;
+	ts_syscall_param_t * p;
+
+	// メッセージボックスの先頭にあるメッセージを抜き出す
+	mp = mbox->head;
+	mboxp->head = mp->next;
+	if (mboxp->head == NULL) {
+		mboxp->tail == NULL;
+	}
+	mp->next = NULL;
+
+	// メッセージを受信するスレッドに返す値を設定する
+	p = mboxp->receiver->syscall.param;
+	p->un.recv.ret = (ts_thread_id_t)mp->sender;
+	if (p->un.recv.sizep) {
+		*(p->un.recv.sizep) = mp->param.size;
+	}
+	if (p->un.recv.pp) {
+		*(p->un.recv.pp) = mp->param.p;
+	}
+
+	// 受信待ちスレッドはいなくなったのでNULLに戻す
+	mboxp->receiver = NULL;
+
+	// メッセージバッファの解放
+	tsmem_free(mp);
+}
+
 /* 割込みハンドラの登録 */
 static int setintr(softvec_type_t type, ts_handler_t handler) {
 	static void thread_intr(softvec_type_t type, unsigned long sp);
@@ -279,6 +390,12 @@ static void call_functions(ts_syscall_type_t type, ts_syscall_param_t *p) {
 			break;
 		case TS_SYSCALL_TYPE_TMFREE: // ts_tmfree()
 			p->un.tmfree.ret = thread_tmfree(p->un.tmfree.p);
+			break;
+		case TS_SYSCALL_TYPE_SEND: // ts_send()
+			p->un.send.ret = thread_send(p->un.send.id, p->un.send.size, p->un.send.p);
+			break;
+		case TS_SYSCALL_TYPE_RECV: // ts_recv()
+			p->un.recv.ret = thread_recv(p->un.recv.id, p->un.recv.sizep, p->un.recv.pp);
 			break;
 		default:
 			break;

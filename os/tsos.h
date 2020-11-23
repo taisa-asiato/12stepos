@@ -16,6 +16,8 @@ ts_thread_id_t ts_getid(void);
 int ts_chpri(int priority);
 void  * ts_tmalloc(int size);
 int ts_tmfree(void *p);
+int ts_send(ts_msgbox_id_t id, int size, char **pp);
+ts_thread_id_t ts_recv(ts_msgbox_id_t id, int * sizep, char **pp);
 
 
 /* ライブラリ関数 */
@@ -37,5 +39,7 @@ extern ts_thread_id_t test09_2_id;
 extern ts_thread_id_t test09_3_id;
 extern ts_thread_id_t test09_4_id;
 int test10_1_main(int argc, char * argv[]);
+int test11_1_main(int argc, char * argv[]);
+int test11_2_main(int argc, char * argv[]);
 
 #endif

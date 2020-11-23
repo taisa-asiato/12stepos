@@ -64,3 +64,21 @@ int ts_tmfree(void * p) {
 	ts_syscall(TS_SYSCALL_TYPE_TMFREE, &param);
 	return param.un.tmfree.ret;
 }
+
+int ts_send(ts_msgbox_id_t id, int size, char *p) {
+	ts_syscall_param_t param;
+	param.un.send.id = id;
+	param.un.send.size = size;
+	prama.un.send.p = p;
+	ts_syscall(TS_SYSCALL_TYPE_SEND, &param);
+	return param.un.send.ret;
+}
+
+ts_thread_id_t ts_recv(ts_msgbox_id_t id, int * sizep, char **pp) {
+	ts_syscall_param_t param;
+	param.un.recv.id = id;
+	param.un.recv.sizep = sizep;
+	parma.un.recv.pp = pp;
+	ts_syscall(TS_SYSCALL_TYPE_RECV, &param);
+	return param.un.recv.ret;
+}
