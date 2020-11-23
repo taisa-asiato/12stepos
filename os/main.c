@@ -17,7 +17,13 @@ static int start_threads(int argc, char * argv[]) {
 	//test09_3_id = ts_run(test09_3_main, "test09_3", 3, 0x100, 0, NULL);
 	//test09_4_id = ts_run(test09_4_main, "test09_4", 4, 0x100, 0, NULL);
 
-	ts_run(test10_1_main, "test10_1", 1, 0x100, 0, NULL);
+	//ts_run(test10_1_main, "test10_1", 1, 0x100, 0, NULL);
+	//
+	ts_run(test11_1_main, "test11_1", 1, 0x100, 0, NULL);
+	ts_run(test11_2_main, "test11_2", 2, 0x100, 0, NULL);
+	//
+	//
+	//
 	ts_chpri(15);
 	INTR_ENABLE;
 	while (1) {

@@ -15,7 +15,7 @@ typedef enum {
 	TS_SYSCALL_TYPE_TMFREE,
 	TS_SYSCALL_TYPE_SEND,
 	TS_SYSCALL_TYPE_RECV,
-} ts_syscall_type_t
+} ts_syscall_type_t;
 
 /* システムコール呼び出し時のパラメータ格納域の定義 */
 typedef struct {
@@ -67,7 +67,7 @@ typedef struct {
 			ts_msgbox_id_t id;
 			int * sizep;
 			char **pp;
-			ts_thread_id_t ret
+			ts_thread_id_t ret;
 		} recv;
 	} un;
 } ts_syscall_param_t;

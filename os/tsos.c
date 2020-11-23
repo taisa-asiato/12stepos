@@ -253,44 +253,6 @@ static int thread_tmfree(char * p) {
 	return 0;
 }
 
-/* メッセージ送信 */
-static int thread_send(ts_msgbox_id_t id, int size, char * p) {
-	ts_msgbox * mboxp = &msgboxes[id];
-
-	putcurrent();
-	sendmsg(mboxp, current, size, p);
-
-	// 受信待ちスレッドが存在している場合には受信処理を行う
-	if (mboxp->receiver) {
-		current = mboxp->receiver; // 受信待ちスレッド
-		recvmsg(mboxp);			//メッセージの受信処理
-		putcurrent();
-	}
-	return size;
-}
-
-/* メッセージ受信 */
-static ts_thread_id_t thread_recv(ts_msgbox_id_t id, int * sizep, char **p) {
-	ts_msgbox * mboxp = &msgboxes[id];
-
-	// 他のスレッドが受信待ちしている
-	if (mxboxp->receiver) {
-		ts_sysdown();
-	}
-
-	mboxp->receiver = current; // 受信待ちスレッドに設定
-
-	// メッセージボックスにメッセージがないためスリープさせる
-	if (mboxp->head == NULL) {
-		return -1;
-	}
-
-	recvmsg(mboxp);
-	putcurrent();
-
-	return current->syscall.param->un.recv.ret;
-}
-
 // メッセージの送信処理
 static void sendmsg(ts_msgbox * mboxp, ts_thread * thp, int size, char * p) {
 	ts_msgbuf * mp;
@@ -321,10 +283,10 @@ static void recvmsg(ts_msgbox * mboxp) {
 	ts_syscall_param_t * p;
 
 	// メッセージボックスの先頭にあるメッセージを抜き出す
-	mp = mbox->head;
+	mp = mboxp->head;
 	mboxp->head = mp->next;
 	if (mboxp->head == NULL) {
-		mboxp->tail == NULL;
+		mboxp->tail = NULL;
 	}
 	mp->next = NULL;
 
@@ -344,6 +306,45 @@ static void recvmsg(ts_msgbox * mboxp) {
 	// メッセージバッファの解放
 	tsmem_free(mp);
 }
+/* メッセージ送信 */
+static int thread_send(ts_msgbox_id_t id, int size, char * p) {
+	ts_msgbox * mboxp = &msgboxes[id];
+
+	putcurrent();
+	sendmsg(mboxp, current, size, p);
+
+	// 受信待ちスレッドが存在している場合には受信処理を行う
+	if (mboxp->receiver) {
+		current = mboxp->receiver; // 受信待ちスレッド
+		recvmsg(mboxp);			//メッセージの受信処理
+		putcurrent();
+	}
+	return size;
+}
+
+/* メッセージ受信 */
+static ts_thread_id_t thread_recv(ts_msgbox_id_t id, int * sizep, char **p) {
+	ts_msgbox * mboxp = &msgboxes[id];
+
+	// 他のスレッドが受信待ちしている
+	if (mboxp->receiver) {
+		ts_sysdown();
+	}
+
+	mboxp->receiver = current; // 受信待ちスレッドに設定
+
+	// メッセージボックスにメッセージがないためスリープさせる
+	if (mboxp->head == NULL) {
+		return -1;
+	}
+
+	recvmsg(mboxp);
+	putcurrent();
+
+	return current->syscall.param->un.recv.ret;
+}
+
+
 
 /* 割込みハンドラの登録 */
 static int setintr(softvec_type_t type, ts_handler_t handler) {
@@ -470,6 +471,7 @@ void ts_start(ts_func_t func, char *name, int priority, int stacksize, int argc,
 	memset(readyque, 0, sizeof(readyque));
 	memset(threads, 0, sizeof(threads));
 	memset(handlers, 0, sizeof(handlers));
+	memset(msgboxes, 0, sizeof(msgboxes));
 
 	// 割込みハンドラの登録
 	setintr(SOFTVEC_TYPE_SYSCALL, syscall_intr); // システムコール割込み

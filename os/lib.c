@@ -47,6 +47,7 @@ int strlen(const char *s) {
 char *strcpy(char *dst, const char *src) {
 	char *d = dst;
 	for ( ; ; dst++, src++) {
+		*dst = *src;
 		if (!*src) break;
 	}
 	return d;

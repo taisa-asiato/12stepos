@@ -16,7 +16,7 @@ ts_thread_id_t ts_getid(void);
 int ts_chpri(int priority);
 void  * ts_tmalloc(int size);
 int ts_tmfree(void *p);
-int ts_send(ts_msgbox_id_t id, int size, char **pp);
+int ts_send(ts_msgbox_id_t id, int size, char *pp);
 ts_thread_id_t ts_recv(ts_msgbox_id_t id, int * sizep, char **pp);
 
 
