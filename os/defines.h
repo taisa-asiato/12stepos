@@ -13,8 +13,8 @@ typedef int (*ts_func_t)(int argc, char * argv[]);
 typedef void (*ts_handler_t)(void);
 
 typedef enum {
-	MSGBOX_ID_MSGBOX1 = 0,
-	MSGBOX_ID_MSGBOX2,
+	MSGBOX_ID_CONSINPUT = 0, // コンソールからの入力用
+	MSGBOX_ID_CONSOUTPU,	// コンソールへの出力用
 	MSGBOX_ID_NUM
 } ts_msgbox_id_t;
 

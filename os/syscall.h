@@ -1,6 +1,7 @@
 #ifndef _TSOS_SYSCALL_H_INCLUDED_
 #define _TSOS_SYSCALL_H_INCLUDED_
 #include "defines.h"
+#include "interrupt.h"
 
 /* システムコール番号の定義 */
 typedef enum {
@@ -15,6 +16,7 @@ typedef enum {
 	TS_SYSCALL_TYPE_TMFREE,
 	TS_SYSCALL_TYPE_SEND,
 	TS_SYSCALL_TYPE_RECV,
+	TS_SYSCALL_TYPE_SETINTR,
 } ts_syscall_type_t;
 
 /* システムコール呼び出し時のパラメータ格納域の定義 */
@@ -69,6 +71,11 @@ typedef struct {
 			char **pp;
 			ts_thread_id_t ret;
 		} recv;
+		struct {
+			softvec_type_t type;
+			ts_handler_t handler;
+			int ret;
+		} setintr;
 	} un;
 } ts_syscall_param_t;
 
