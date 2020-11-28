@@ -345,9 +345,8 @@ static ts_thread_id_t thread_recv(ts_msgbox_id_t id, int * sizep, char **p) {
 }
 
 
-
 /* 割込みハンドラの登録 */
-static int setintr(softvec_type_t type, ts_handler_t handler) {
+static int thread_setintr(softvec_type_t type, ts_handler_t handler) {
 	static void thread_intr(softvec_type_t type, unsigned long sp);
 
 	/* 割込みを受け付けるために，ソフトウェア・割込みベクタに
@@ -356,6 +355,7 @@ static int setintr(softvec_type_t type, ts_handler_t handler) {
 
 	softvec_setintr(type, thread_intr);
 	handlers[type] = handler; // OS側から呼び出すハンドラを登録
+	putcurrent();
 	return 0;
 }
 
