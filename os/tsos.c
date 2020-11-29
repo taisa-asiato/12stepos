@@ -398,6 +398,9 @@ static void call_functions(ts_syscall_type_t type, ts_syscall_param_t *p) {
 		case TS_SYSCALL_TYPE_RECV: // ts_recv()
 			p->un.recv.ret = thread_recv(p->un.recv.id, p->un.recv.sizep, p->un.recv.pp);
 			break;
+		case TS_SYSCALL_TYPE_SETINTR: // ts_setintr
+			p->un.setintr.ret = thread_setintr(p->un.setintr.type, p->un.setintr.handler);
+			break;
 		default:
 			break;
 	}
@@ -406,6 +409,14 @@ static void call_functions(ts_syscall_type_t type, ts_syscall_param_t *p) {
 /* システムコールの処理 */
 static void syscall_proc(ts_syscall_type_t type, ts_syscall_param_t *p) {
 	getcurrent();
+	call_functions(type, p);
+}
+
+/* サービスコールの処理 */
+static void srvcall_proc(ts_syscall_type_t type, ts_syscall_param_t * p) {
+	// 割込みで呼ばれた段階でcurrentに設定されている値は残っているの
+	// 誤作動を起こす恐れがあるため，NULLポインタに設定しておく
+	current = NULL;
 	call_functions(type, p);
 }
 
@@ -474,8 +485,8 @@ void ts_start(ts_func_t func, char *name, int priority, int stacksize, int argc,
 	memset(msgboxes, 0, sizeof(msgboxes));
 
 	// 割込みハンドラの登録
-	setintr(SOFTVEC_TYPE_SYSCALL, syscall_intr); // システムコール割込み
-	setintr(SOFTVEC_TYPE_SOFTERR, softerr_intr); // エラー発生時処理
+	thread_setintr(SOFTVEC_TYPE_SYSCALL, syscall_intr); // システムコール割込み
+	thread_setintr(SOFTVEC_TYPE_SOFTERR, softerr_intr); // エラー発生時処理
 
 	// 初期スレッドはシステムコールの発行が不可能なので直接関数を呼び出す
 	current = (ts_thread *)thread_run(func, name, priority, stacksize, argc, argv);
@@ -500,3 +511,7 @@ void ts_syscall(ts_syscall_type_t type, ts_syscall_param_t *param) {
 	asm volatile ("trapa #0"); // トラップ割込発生，トラップ命令により割込みを発生させる
 }
 
+/* サービスコール呼び出し用ライブラリ関数 */
+void ts_srvcall(ts_syscall_type_t type, ts_syscall_param_t * p) {
+	srvcall_proc(type, p);
+}

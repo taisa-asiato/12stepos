@@ -107,7 +107,7 @@ void *tx_tmalloc(int size) {
 	return param.un.tmalloc.ret;
 }
 
-void *tx_tmfree(void * p) {
+int tx_tmfree(void * p) {
 	ts_syscall_param_t param;
 	param.un.tmfree.p = p;
 	ts_srvcall(TS_SYSCALL_TYPE_TMFREE, &param);
